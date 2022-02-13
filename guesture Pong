@@ -1,0 +1,135 @@
+import random
+import numpy as np
+import cv2
+import turtle
+
+color = [[100, 70, 50, 115, 255, 255], [10, 90, 200, 20, 230, 255]]
+
+
+def findColor(im, u):
+    HSV = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
+    low = np.array(color[u][0:3])
+    high = np.array(color[u][3:6])
+    mask = cv2.inRange(HSV, low, high)
+    y = Contours(mask)
+    return -y+350
+
+
+def Contours(im):
+    con, hir = cv2.findContours(im, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    x, y, w, h = 0, 0, 0, 0
+    for cnt in con:
+        area = cv2.contourArea(cnt)
+        if area > 1000:
+            peri = cv2.arcLength(cnt, True)
+            approx = cv2.approxPolyDP(cnt, 0.02*peri, True)
+            x, y, w, h = cv2.boundingRect(approx)
+    return y
+
+
+wn = turtle.Screen()
+wn.title("Simple Pong")
+wn.bgcolor("green")
+wn.setup(width=800, height=600)
+wn.tracer(0)
+pad1 = turtle.Turtle()
+pad2 = turtle.Turtle()
+ball = turtle.Turtle()
+pad = [pad1, pad2, ball]
+score = [0, 0]
+cap = cv2.VideoCapture(0)
+
+bord = turtle.Turtle()
+bord.shape("square")
+bord.shapesize(stretch_wid=31, stretch_len=41)
+bord.color("black")
+bord2 = turtle.Turtle()
+bord2.shape("square")
+bord2.shapesize(stretch_wid=30, stretch_len=40)
+bord2.color("green")
+
+for i in range(3):
+    pad[i] = turtle.Turtle()
+    pad[i].speed(0)
+    pad[i].shape("square")
+    pad[i].shapesize(stretch_wid=5, stretch_len=1)
+    pad[i].color("red")
+    pad[i].penup()
+
+# paddle 1
+pad[0].goto(-390, 0)
+
+# paddle 2
+pad[1].goto(380, 0)
+
+# Ball
+pad[2].shape("circle")
+pad[2].goto(0, 0)
+pad[2].shapesize(stretch_wid=1, stretch_len=1)
+speed = 5
+dx = speed
+dy = speed
+
+# pen
+pen = turtle.Turtle()
+pen.clear()
+pen.color("blue")
+pen.penup()
+pen.goto(0, 310)
+pen.write("Player A: " + str(score[0]) + "\t", align="right", font=("Ariel", 24, "bold"))
+pen.write("\tPlayer B: " + str(score[1]), align="left", font=("Ariel", 24, "bold"))
+wn.update()
+
+# Main gain loop
+n = 0
+while score[0] < 3 and score[1] < 3:
+    success, img = cap.read()
+    img = cv2.resize(img, (800, 600))
+    pad[0].sety(findColor(img, 0))
+    pad[1].sety(findColor(img, 1))
+    cv2.waitKey(1)
+    wn.update()
+
+    # Move the ball
+    pad[2].setx(pad[2].xcor() + dx)
+    pad[2].sety(pad[2].ycor() + dy)
+
+    # Border Checking
+    if pad[2].ycor() > 290 or pad[2].ycor() < -290:
+        dy = dy*(-1)
+    if pad[2].xcor() > 390:
+        pad[2].goto(0, 0)
+        score[0] += 1
+        pen.clear()
+        pen.write("Player A: " + str(score[0]) + "\t", align="right", font=("Ariel", 24, "bold"))
+        pen.write("\tPlayer B: " + str(score[1]), align="left", font=("Ariel", 24, "bold"))
+        dx = -speed
+    if pad[2].xcor() < -390:
+        pad[2].goto(0, 0)
+        dx = speed
+        score[1] += 1
+        pen.clear()
+        pen.write("Player A: " + str(score[0]) + "\t", align="right", font=("Ariel", 24, "bold"))
+        pen.write("\tPlayer B: " + str(score[1]), align="left", font=("Ariel", 24, "bold"))
+    if (pad[0].ycor() - 50 < pad[2].ycor() < pad[0].ycor() + 50) and pad[2].xcor() < -370:
+        n = random.uniform(0, 1)
+        speed += n
+        dx = speed
+    if (pad[1].ycor() - 50 < pad[2].ycor() < pad[1].ycor() + 50) and pad[2].xcor() > 360:
+        n = random.uniform(0, 1)
+        speed += n
+        dx = -speed
+
+wn.update()
+wn.bgcolor("Red")
+bord2.color("Red")
+wn.update()
+pen2 = turtle.Turtle()
+pen2.color("Black")
+if score[0] > score[1]:
+    winner = "A"
+else:
+    winner = "B"
+pen2.write("Game Over\n", align="Center", font=("Georgia", 50, "bold"))
+pen2.write(" \nPlayer " + winner + " Wins", align="Center", font=("Georgia", 30, "bold"))
+cv2.waitKey(5000)
